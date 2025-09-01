@@ -5,6 +5,7 @@
 - Removed lock confirmation prompt in CLI; all variants now lock by default.
 - Updated TUI to lock tags by default; removed irreversible lock warnings.
 - Ensured GUI mirrors CLI behavior (default lock, no warning).
+- Compatibility notes: Validated with ACS ACR1252U reader and NXP NTAG213 tags.
 - Added run scripts for all three variants:
   - TUI: `./scripts/run.sh`
   - CLI: `./scripts/run_cli.sh`

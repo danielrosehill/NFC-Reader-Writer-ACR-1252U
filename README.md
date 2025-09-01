@@ -1,8 +1,11 @@
-# ACS ACR1252 USB NFC Reader - TUI & CLI (Ubuntu Linux)
+# ACS ACR1252U USB NFC Reader - TUI & CLI (Ubuntu Linux)
+
+[![Reader](https://img.shields.io/badge/Reader-ACS%20ACR1252U-blue)](https://www.acs.com.hk/en/products/3/acr1252u-usb-nfc-reader-ii/)
+[![Validated Tag](https://img.shields.io/badge/Validated%20Tag-NXP%20NTAG213-brightgreen)](#tested-tags)
 
 ![alt text](screenshots/tui-version/home.png)
 
-A command-line interface for reading and writing NFC tags using the ACS ACR1252 USB NFC Reader on Linux systems.
+A command-line interface for reading and writing NFC tags using the ACS ACR1252U USB NFC Reader on Linux systems.
 
 ## Features
 
@@ -14,9 +17,13 @@ A command-line interface for reading and writing NFC tags using the ACS ACR1252 
 
 ## Hardware Requirements
 
-- ACS ACR1252 USB NFC Reader/Writer
+- ACS ACR1252U USB NFC Reader/Writer (tested)
 - NTAG213/215/216 NFC tags (recommended)
 - Linux system with USB support
+
+Validated hardware/media:
+- Reader: ACS ACR1252U
+- Tags: NXP NTAG213 (validated)
 
 ## Installation
 
