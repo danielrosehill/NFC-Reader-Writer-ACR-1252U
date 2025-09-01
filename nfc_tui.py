@@ -312,10 +312,9 @@ class NFCApp(App):
         self.log_widget.write(f"📋 URL to write: {url}")
         print(f"\n📋 URL to write: {url}\n")  # Also print to terminal
         
-        # Set write mode and start writing with permanent locking
+        # Set write mode and start writing (default: lock after write)
         self.nfc_handler.set_write_mode(url, lock_after_write=True)
-        self.log_widget.write("📝 Present NFC tag to write and permanently lock...")
-        self.log_widget.write("⚠️  WARNING: Tag will be PERMANENTLY LOCKED (irreversible!)")
+        self.log_widget.write("📝 Present NFC tag to write...")
         
         # Reset batch counters for single write
         self.nfc_handler.batch_count = 0
@@ -353,12 +352,11 @@ class NFCApp(App):
         print(f"\n📋 URL to write: {url}")
         print(f"📦 Batch count: {batch_count}\n")
         
-        # Set write mode and start batch writing with permanent locking
+        # Set write mode and start batch writing (default: lock after write)
         self.nfc_handler.set_write_mode(url, lock_after_write=True)
         self.nfc_handler.batch_count = 0
         self.nfc_handler.batch_total = batch_count
         self.log_widget.write(f"📝 Present first NFC tag (1/{batch_count})...")
-        self.log_widget.write("⚠️  WARNING: Tags will be PERMANENTLY LOCKED (irreversible!)")
         
         # Debug: log current state
         self.log_widget.write(f"DEBUG: TUI mode set to: {self.current_mode}")

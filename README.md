@@ -71,9 +71,8 @@ Run the application to launch the terminal user interface:
 **Write Mode:**
 1. Enter URL in the input field
 2. Optionally set batch count for multiple tags
-3. Check "Lock tags" to permanently lock tags after writing (irreversible!)
-4. Press Enter or click "Start Writing"
-5. Present NFC tag(s) to reader
+3. Press Enter or click "Start Writing"
+4. Present NFC tag(s) to reader
 - MIFARE Ultralight
 - MIFARE Classic (with NDEF formatting)
 - ISO14443 Type A tags
@@ -118,9 +117,9 @@ References to real domains are replaced with a neutral `https://example.com` bas
 ├── scripts/           # Bash wrapper scripts (install, run)
 ├── tools/             # Helper Python tools (e.g., write_url)
 ├── main.py            # CLI/TUI entry point
-├── nfc_cli.py         # CLI commands
-├── nfc_tui.py         # Textual TUI interface
-├── nfc_gui.py         # (Optional) GUI prototype
+├── nfc_cli.py         # CLI interface (interactive)
+├── nfc_tui.py         # Textual TUI interface (default)
+├── nfc_gui.py         # Simple GUI prototype (Tkinter)
 ├── nfc_handler.py     # NFC operations and card monitoring
 ├── requirements.txt   # Python dependencies
 └── README.md          # This file
@@ -139,6 +138,13 @@ python tools/write_url.py
 This creates two files:
 - `debug/ndef_write_<timestamp>.log` (verbose runtime log; ignored by git)
 - `examples/ndef_write_example_<timestamp>.txt` (sanitized log suitable for the repo)
+
+### Variants
+- TUI (default): `./scripts/run.sh`
+- CLI: `./scripts/run_cli.sh`
+- GUI: `./scripts/run_gui.sh`
+
+Note: By default, write operations permanently lock tags. There is no on-screen warning. The helper tool `tools/write_url.py` allows opting out by omitting `--lock`.
 
 ### Dependencies
 - `pyscard`: PC/SC smartcard library interface

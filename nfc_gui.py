@@ -227,8 +227,8 @@ class NFCGui:
         self.log_message(f"📋 URL to write: {url}")
         print(f"\n📋 URL to write: {url}\n")  # Console output for verification
         
-        # Set write mode and start writing
-        self.nfc_handler.set_write_mode(url, lock_after_write=False)
+        # Set write mode and start writing (default: lock after write)
+        self.nfc_handler.set_write_mode(url, lock_after_write=True)
         self.log_message("📝 Present NFC tag to write URL...")
         
         # Reset batch counters
@@ -260,8 +260,8 @@ class NFCGui:
         print(f"\n📋 URL to write: {url}")
         print(f"📦 Batch count: {batch_count}\n")
         
-        # Set write mode and start batch writing
-        self.nfc_handler.set_write_mode(url, lock_after_write=False)
+        # Set write mode and start batch writing (default: lock after write)
+        self.nfc_handler.set_write_mode(url, lock_after_write=True)
         self.nfc_handler.batch_count = 0
         self.nfc_handler.batch_total = batch_count
         self.log_message(f"📝 Present first NFC tag (1/{batch_count})...")

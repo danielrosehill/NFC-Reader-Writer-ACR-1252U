@@ -37,7 +37,12 @@ setup(
     install_requires=requirements,
     entry_points={
         "console_scripts": [
-            "nfc-cli=main:main",
+            # TUI default entry point
+            "nfc-tui=main:main",
+            # Plain CLI
+            "nfc-cli=nfc_cli:main",
+            # Simple GUI
+            "nfc-gui=nfc_gui:main",
         ],
     },
 )

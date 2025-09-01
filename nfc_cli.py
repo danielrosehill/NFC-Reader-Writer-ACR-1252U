@@ -142,7 +142,8 @@ class NFCCli:
             print("❌ Write cancelled")
             return
 
-        lock_after = input("Permanently lock tag after write? (y/N): ").strip().lower() in ['y','yes']
+        # No lock confirmation prompt; default to locking for all variants
+        lock_after = True
         
         # Ask about batch writing
         batch_input = input("Batch count (press Enter for single tag): ").strip()
