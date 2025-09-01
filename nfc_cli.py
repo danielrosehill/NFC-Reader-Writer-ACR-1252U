@@ -132,8 +132,9 @@ class NFCCli:
         # Show URL clearly for verification
         print(f"\n📋 URL to write: {url}")
         print("="*len(url) + "="*20)
+        print("⚠️  WARNING: Tags will be PERMANENTLY LOCKED after writing (irreversible!)")
         
-        confirm = input("Write this URL to NFC tag? (y/n): ").strip().lower()
+        confirm = input("Write and permanently lock this URL to NFC tag? (y/n): ").strip().lower()
         if confirm not in ['y', 'yes']:
             print("❌ Write cancelled")
             return
@@ -150,8 +151,8 @@ class NFCCli:
         if batch_count > 1:
             print(f"📦 Batch write: {batch_count} tags")
         
-        # Set write mode and start writing
-        self.nfc_handler.set_write_mode(url, lock_after_write=False)
+        # Set write mode and start writing with permanent locking
+        self.nfc_handler.set_write_mode(url, lock_after_write=True)
         self.nfc_handler.batch_count = 0
         self.nfc_handler.batch_total = batch_count
         

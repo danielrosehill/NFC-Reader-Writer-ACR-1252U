@@ -8,6 +8,7 @@ import hashlib
 import ndef
 import webbrowser
 import pyperclip
+import time
 from typing import Optional, Callable
 from smartcard.CardMonitoring import CardMonitor, CardObserver
 from smartcard.CardConnection import CardConnection
@@ -30,6 +31,8 @@ class NFCHandler:
         self.debug_mode = debug_mode
         self.cards_processed = 0
         self.lock_tags = False  # Whether to permanently lock tags after writing
+        self.last_read_time = 0  # Timestamp of last successful read
+        self.read_cooldown = 3.0  # Cooldown period in seconds
         
     def initialize_reader(self) -> bool:
         """Initialize the NFC reader connection"""
@@ -249,13 +252,24 @@ class NFCObserver(CardObserver):
                 self.nfc_handler.log_callback("Card removed")
     
     def handle_read_mode(self, connection):
-        """Handle reading from NFC tag"""
+        """Handle reading from NFC tag with debouncing"""
+        current_time = time.time()
+        
+        # Check if we're in cooldown period
+        if current_time - self.nfc_handler.last_read_time < self.nfc_handler.read_cooldown:
+            if self.nfc_handler.log_callback:
+                self.nfc_handler.log_callback("Tag read ignored (cooldown period)")
+            return
+        
         if self.nfc_handler.log_callback:
             self.nfc_handler.log_callback("Reading NFC tag...")
         
         url = self.nfc_handler.read_ndef_message(connection)
         
         if url:
+            # Update last read time to start cooldown
+            self.nfc_handler.last_read_time = current_time
+            
             if self.nfc_handler.read_callback:
                 self.nfc_handler.read_callback(url)
             
