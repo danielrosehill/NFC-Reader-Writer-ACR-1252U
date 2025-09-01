@@ -1,5 +1,6 @@
 pyscard>=2.0.7
 ndeflib>=0.3.3
+nfcpy>=1.0.4
 textual>=0.41.0
 click>=8.1.0
 pyperclip>=1.8.2

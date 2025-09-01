@@ -73,13 +73,31 @@ class NFCHandler:
         if self.log_callback:
             self.log_callback("🔍 Starting card monitoring...")
         
+        # Check for available readers
+        try:
+            from smartcard.System import readers
+            available_readers = readers()
+            if not available_readers:
+                if self.log_callback:
+                    self.log_callback("❌ No card readers found")
+                return
+            
+            if self.log_callback:
+                self.log_callback(f"📡 Found {len(available_readers)} reader(s):")
+                for i, reader in enumerate(available_readers):
+                    self.log_callback(f"  {i+1}. {reader}")
+            
+        except Exception as e:
+            if self.log_callback:
+                self.log_callback(f"❌ Error checking readers: {e}")
+        
         self.observer = NFCCardObserver(self)
         self.monitor = CardMonitor()
         self.monitor.addObserver(self.observer)
         self.is_monitoring = True
         
         if self.log_callback:
-            self.log_callback("✅ Card monitoring active - waiting for cards...")
+            self.log_callback("✅ Card monitoring active - present NFC card to reader...")
     
     def stop_monitoring(self):
         """Stop monitoring for NFC tags"""
@@ -100,9 +118,22 @@ class NFCHandler:
     def read_ndef_from_tag(self, connection) -> Optional[str]:
         """Read NDEF data from NFC tag and extract URL"""
         try:
-            # Try different approaches to read NDEF data
+            # Method 1: Try NTAG213/215/216 direct read first (most common for NFC tags)
+            try:
+                # Read from page 4 onwards (NTAG format) - this is more reliable
+                for start_page in [4, 0]:
+                    read_cmd = [0xFF, 0xB0, 0x00, start_page, 0x30]  # Read 48 bytes
+                    response, sw1, sw2 = connection.transmit(read_cmd)
+                    
+                    if sw1 == 0x90 and len(response) > 0:
+                        url = self._parse_ndef_data(bytes(response), f"ntag_page_{start_page}")
+                        if url:
+                            return url
+            except Exception as e:
+                if self.log_callback:
+                    self.log_callback(f"[DEBUG] NTAG read failed: {e}")
             
-            # Method 1: Try to select NDEF application first
+            # Method 2: Try to select NDEF application
             try:
                 select_ndef = [0x00, 0xA4, 0x04, 0x00, 0x07, 0xD2, 0x76, 0x00, 0x00, 0x85, 0x01, 0x01]
                 response, sw1, sw2 = connection.transmit(select_ndef)
@@ -121,22 +152,9 @@ class NFCHandler:
                             url = self._parse_ndef_data(bytes(response[2:]), "ndef_app")
                             if url:
                                 return url
-            except:
-                pass
-            
-            # Method 2: Try reading NTAG213/215/216 directly
-            try:
-                # Read from page 4 onwards (NTAG format)
-                for start_page in [4, 0]:
-                    read_cmd = [0xFF, 0xB0, 0x00, start_page, 0x30]  # Read 48 bytes
-                    response, sw1, sw2 = connection.transmit(read_cmd)
-                    
-                    if sw1 == 0x90 and len(response) > 0:
-                        url = self._parse_ndef_data(bytes(response), f"ntag_page_{start_page}")
-                        if url:
-                            return url
-            except:
-                pass
+            except Exception as e:
+                if self.log_callback:
+                    self.log_callback(f"[DEBUG] NDEF app select failed: {e}")
             
             # Method 3: Try reading as ISO14443-4 card
             try:
@@ -324,10 +342,28 @@ class NFCCardObserver(CardObserver):
                     self.nfc_handler.log_callback(f"🔗 Connecting to card: {card}")
                 
                 connection = card.createConnection()
-                connection.connect()
                 
-                if self.nfc_handler.log_callback:
-                    self.nfc_handler.log_callback(f"✅ Connected to card successfully")
+                # Use default connection to avoid protocol type errors
+                connected = False
+                
+                try:
+                    if self.nfc_handler.log_callback:
+                        self.nfc_handler.log_callback(f"🔄 Connecting to card...")
+                    connection.connect()
+                    
+                    connected = True
+                    if self.nfc_handler.log_callback:
+                        self.nfc_handler.log_callback(f"✅ Connected successfully")
+                        
+                except Exception as e:
+                    if self.nfc_handler.log_callback:
+                        self.nfc_handler.log_callback(f"❌ Connection failed: {e}")
+                    continue
+                
+                if not connected:
+                    if self.nfc_handler.log_callback:
+                        self.nfc_handler.log_callback("❌ All connection attempts failed")
+                    continue
                 
                 if self.nfc_handler.mode == "read":
                     self._handle_read_mode(connection)
