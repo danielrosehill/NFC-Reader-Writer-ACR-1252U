@@ -1,107 +1,65 @@
-# ACS ACR1252 NFC CLI
+# ACS ACR1252 NFC CLI Linux
 
-A modern command-line interface for the ACS ACR1252 USB NFC Reader/Writer. This CLI provides an intuitive terminal user interface (TUI) for reading URLs from NFC tags and writing URLs to NFC tags with batch support.
+A command-line interface for reading and writing NFC tags using the ACS ACR1252 USB NFC Reader on Linux systems.
 
 ## Features
 
-- **📖 Read Mode**: Continuously scan NFC tags and automatically open URLs in your browser
-- **✏️ Write Mode**: Write URLs to NFC tags with automatic tag locking
-- **📦 Batch Writing**: Write the same URL to multiple tags sequentially
-- **⌨️ Keyboard Shortcuts**: Quick mode switching with Ctrl+1 (Read) and Ctrl+2 (Write)
-- **🎨 Modern TUI**: Beautiful terminal interface built with Textual
-- **🔒 Tag Locking**: Automatically locks tags after writing to prevent accidental overwrites
-- **🌐 Long URL Support**: Handles long URLs like the example in your repository
+- **Read Mode**: Continuously scan NFC tags and automatically open URLs in browser
+- **Write Mode**: Write URLs to NFC tags with optional permanent locking
+- **Batch Writing**: Write the same URL to multiple tags sequentially
+- **Modern TUI**: Beautiful terminal user interface with keyboard shortcuts
+- **Cross-platform**: Works on Linux systems with proper NFC reader support
 
-## Requirements
+## Hardware Requirements
 
-- Python 3.8+
-- ACS ACR1252 USB NFC Reader/Writer (or compatible PC/SC reader)
-- Linux system with PC/SC daemon (pcscd)
+- ACS ACR1252 USB NFC Reader/Writer
+- NTAG213/215/216 NFC tags (recommended)
+- Linux system with USB support
 
 ## Installation
 
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/danielrosehill/ACS-ACR-1252-NFC-CLI-Linux.git
-   cd ACS-ACR-1252-NFC-CLI-Linux
-   ```
+1. Clone this repository:
+```bash
+git clone https://github.com/yourusername/ACS-ACR-1252-NFC-CLI-Linux.git
+cd ACS-ACR-1252-NFC-CLI-Linux
+```
 
-2. **Set up virtual environment**:
-   ```bash
-   uv venv
-   source .venv/bin/activate
-   ```
+2. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
 
-3. **Install dependencies**:
-   ```bash
-   uv pip install -r requirements.txt
-   ```
-
-4. **Ensure PC/SC daemon is running**:
-   ```bash
-   sudo systemctl start pcscd
-   sudo systemctl enable pcscd
-   ```
+3. Run the application:
+```bash
+python main.py
+```
 
 ## Usage
 
-### Starting the CLI
+### TUI Mode (Default)
+
+Run the application to launch the terminal user interface:
 
 ```bash
 python main.py
 ```
 
-Or with the executable:
-```bash
-./main.py
-```
-
-### Interface Overview
-
-The TUI interface consists of:
-- **Mode Indicator**: Shows current mode (Read/Write) with color coding
-- **Status Panel**: Displays reader connection status
-- **Input Panel**: URL input and batch controls (visible in write mode)
-- **Control Buttons**: Mode switching and application controls
-- **Log Panel**: Real-time activity log with status messages
-
-### Operating Modes
-
-#### Read Mode (Default)
-- Automatically activated on startup
-- Present any NFC tag to the reader
-- URLs are decoded and opened in your default browser
-- Continuous operation - no need to restart after each tag
-
-**Keyboard Shortcut**: `Ctrl+1`
-
-#### Write Mode
-- Enter a URL in the input field
-- Choose single write or batch write
-- Present NFC tag(s) to write the URL
-- Tags are automatically locked after writing
-
-**Keyboard Shortcut**: `Ctrl+2`
-
-### Batch Writing
-
-1. Switch to Write Mode
-2. Enter the URL to write
-3. Enter the number of tags in the "Batch count" field
-4. Click "Write Batch"
-5. Present tags one by one as prompted
-
-### Keyboard Shortcuts
-
+**Keyboard Shortcuts:**
 - `Ctrl+1`: Switch to Read Mode
-- `Ctrl+2`: Switch to Write Mode  
-- `Ctrl+R`: Reset application (clear logs and inputs)
-- `Ctrl+C`: Quit application
+- `Ctrl+2`: Switch to Write Mode
+- `Ctrl+Q`: Quit application
 
-## Supported NFC Tags
+**Read Mode:**
+- Present NFC tag to reader
+- URL will be automatically opened in browser
+- URL copied to clipboard
 
-The CLI supports NDEF-compatible NFC tags including:
-- NTAG213/215/216
+**Write Mode:**
+1. Enter URL in the input field
+2. Optionally set batch count for multiple tags
+3. Check "Lock tags" to permanently lock tags after writing (irreversible!)
+4. Press Enter or click "Start Writing"
+5. Present NFC tag(s) to reader
 - MIFARE Ultralight
 - MIFARE Classic (with NDEF formatting)
 - ISO14443 Type A tags

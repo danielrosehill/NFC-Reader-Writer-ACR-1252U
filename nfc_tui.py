@@ -197,7 +197,7 @@ class NFCApp(App):
     def action_set_read_mode(self):
         """Switch to read mode"""
         self.current_mode = "read"
-        self.nfc_handler.set_mode("read")
+        self.nfc_handler.set_read_mode()
         
         # Update UI
         self.mode_indicator.remove_class("write-mode")
@@ -271,38 +271,6 @@ class NFCApp(App):
         
         if not url.startswith(('http://', 'https://')):
             url = 'https://' + url
-        
-        self.nfc_handler.set_mode("write", url, 1)
-        self.log_widget.write(f"📝 Ready to write URL: {url}")
-        self.log_widget.write("📱 Present NFC tag to write...")
-    
-    def write_batch_tags(self):
-        """Write batch of tags"""
-        url = self.url_input.value.strip()
-        if not url:
-            self.log_widget.write("❌ Please enter a URL")
-            return
-        
-        try:
-            batch_count = int(self.batch_input.value.strip()) if self.batch_input.value.strip() else 1
-        except ValueError:
-            self.log_widget.write("❌ Invalid batch count")
-            return
-        
-        if batch_count < 1:
-            batch_count = 1
-        
-        if not url.startswith(('http://', 'https://')):
-            url = 'https://' + url
-        
-        self.nfc_handler.set_mode("write", url, batch_count)
-        self.log_widget.write(f"📝 Ready to write {batch_count} tags with URL: {url}")
-        self.log_widget.write("📱 Present first NFC tag to write...")
-    
-    def on_input_submitted(self, event: Input.Submitted) -> None:
-        """Handle input submission"""
-        if event.input.id == "url-input":
-            self.write_single_tag()
 
 
 def main(debug_mode=False):
