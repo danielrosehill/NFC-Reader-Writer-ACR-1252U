@@ -1,4 +1,6 @@
-# ACS ACR1252 NFC CLI Linux
+# ACS ACR1252 USB NFC Reader - TUI & CLI (Ubuntu Linux)
+
+![alt text](screenshots/tui-version/home.png)
 
 A command-line interface for reading and writing NFC tags using the ACS ACR1252 USB NFC Reader on Linux systems.
 
@@ -35,6 +37,16 @@ python main.py
 ```
 
 ## Usage
+
+### CLI
+
+Reading tags:
+
+![alt text](screenshots/cli-version/reading-tag.png)
+
+Writing & locking operation:
+
+![alt text](screenshots/cli-version/writing-tag.png)
 
 ### TUI Mode (Default)
 

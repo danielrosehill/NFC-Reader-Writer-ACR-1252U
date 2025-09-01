@@ -106,6 +106,9 @@ class NFCApp(App):
                 with Horizontal():
                     yield Input(placeholder="Batch count (optional)", id="batch-input")
                     yield Button("Write Batch", id="batch-write", variant="success")
+                # URL preview
+                with Container(id="url-preview-container"):
+                    yield Label("", id="url-preview", classes="url-preview")
             
             # Control buttons
             with Horizontal():
@@ -128,9 +131,12 @@ class NFCApp(App):
         self.log_widget = self.query_one("#log", RichLog)
         self.status_label = self.query_one("#status-label", Label)
         self.mode_indicator = self.query_one("#mode-indicator", Container)
+        self.url_preview = self.query_one("#url-preview", Label)
         
         # Initialize NFC reader
         self.initialize_nfc_reader()
+        
+        # URL input will be handled via on_input_changed event method
         
         # Start in read mode
         self.action_set_read_mode()
@@ -179,20 +185,29 @@ class NFCApp(App):
         """Handle live logging events from NFC handler"""
         self.log_widget.write(f"[LIVE] {message}")
     
-    def on_tag_written(self, success: bool, count: int, total: int):
+    def on_tag_written(self, message: str):
         """Handle tag write event"""
-        if success:
-            if total > 1:
-                self.log_widget.write(f"✅ Tag {count}/{total} written successfully")
-                if count < total:
-                    self.log_widget.write(f"📝 Present next tag ({count + 1}/{total})")
-                else:
-                    self.log_widget.write("🎉 Batch write completed!")
+        self.log_widget.write(f"✅ {message}")
+        self.log_widget.write("📝 Present another tag to write or switch to read mode")
+        # TUI stays open for sequential operations
+    
+    def on_input_changed(self, event) -> None:
+        """Handle input changes for URL preview"""
+        if event.input.id == "url-input":
+            new_value = event.value
+            if new_value.strip():
+                # Add https:// if no protocol specified
+                display_url = new_value
+                if not display_url.startswith(('http://', 'https://')):
+                    display_url = 'https://' + display_url
+                
+                # Truncate long URLs for display
+                if len(display_url) > 80:
+                    display_url = display_url[:77] + "..."
+                
+                self.url_preview.update(f"📋 URL to write: {display_url}")
             else:
-                self.log_widget.write("✅ Tag written and locked successfully")
-                self.log_widget.write("📝 Present another tag to write or switch to read mode")
-        else:
-            self.log_widget.write("❌ Failed to write tag")
+                self.url_preview.update("")
     
     def action_set_read_mode(self):
         """Switch to read mode"""
@@ -204,6 +219,7 @@ class NFCApp(App):
         self.mode_indicator.add_class("read-mode")
         self.query_one("#mode-label", Label).update("📖 READ MODE - Present NFC tag to read URL")
         self.query_one("#input-panel", Container).styles.display = "none"
+        self.url_preview.update("")  # Clear URL preview in read mode
         
         self.log_widget.write("📖 Switched to READ mode")
     
@@ -216,6 +232,18 @@ class NFCApp(App):
         self.mode_indicator.add_class("write-mode")
         self.query_one("#mode-label", Label).update("✏️ WRITE MODE - Enter URL and present NFC tag")
         self.query_one("#input-panel", Container).styles.display = "block"
+        
+        # Update URL preview if there's already text in the input
+        current_url = self.url_input.value
+        if current_url.strip():
+            # Manually trigger URL preview update
+            if current_url.strip():
+                display_url = current_url
+                if not display_url.startswith(('http://', 'https://')):
+                    display_url = 'https://' + display_url
+                if len(display_url) > 80:
+                    display_url = display_url[:77] + "..."
+                self.url_preview.update(f"📋 URL to write: {display_url}")
         
         self.log_widget.write("✏️ Switched to WRITE mode")
     
@@ -271,6 +299,49 @@ class NFCApp(App):
         
         if not url.startswith(('http://', 'https://')):
             url = 'https://' + url
+        
+        # Print URL to terminal for verification
+        self.log_widget.write(f"📋 URL to write: {url}")
+        print(f"\n📋 URL to write: {url}\n")  # Also print to terminal
+        
+        # Set write mode and start writing
+        self.nfc_handler.set_write_mode(url, lock_after_write=False)
+        self.log_widget.write("📝 Present NFC tag to write URL...")
+        
+        # Reset batch counters for single write
+        self.nfc_handler.batch_count = 0
+        self.nfc_handler.batch_total = 1
+    
+    def write_batch_tags(self):
+        """Write batch of tags"""
+        url = self.url_input.value.strip()
+        if not url:
+            self.log_widget.write("❌ Please enter a URL")
+            return
+        
+        batch_count_str = self.batch_input.value.strip()
+        try:
+            batch_count = int(batch_count_str) if batch_count_str else 1
+            if batch_count < 1:
+                batch_count = 1
+        except ValueError:
+            self.log_widget.write("❌ Invalid batch count, using 1")
+            batch_count = 1
+        
+        if not url.startswith(('http://', 'https://')):
+            url = 'https://' + url
+        
+        # Print URL to terminal for verification
+        self.log_widget.write(f"📋 URL to write: {url}")
+        self.log_widget.write(f"📦 Batch count: {batch_count}")
+        print(f"\n📋 URL to write: {url}")
+        print(f"📦 Batch count: {batch_count}\n")
+        
+        # Set write mode and start batch writing
+        self.nfc_handler.set_write_mode(url, lock_after_write=False)
+        self.nfc_handler.batch_count = 0
+        self.nfc_handler.batch_total = batch_count
+        self.log_widget.write(f"📝 Present first NFC tag (1/{batch_count})...")
 
 
 def main(debug_mode=False):

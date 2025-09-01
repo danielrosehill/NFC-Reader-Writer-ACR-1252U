@@ -54,31 +54,56 @@ class NFCHandler:
             return False
             
     def create_ndef_record(self, url: str) -> bytes:
-        """Create NDEF record from URL"""
+        """Create NDEF record from URL using direct NTAG213 approach"""
+        # Create NDEF URI record manually for ACR1252 compatibility
         uri_record = ndef.UriRecord(url)
         encoded_message = b''.join(ndef.message_encoder([uri_record]))
         message_length = len(encoded_message)
         
-        initial_message = b'\x03' + message_length.to_bytes(1, 'big') + encoded_message + b'\xFE'
-        padding_length = -len(initial_message) % 4
-        complete_message = initial_message + (b'\x00' * padding_length)
+        # NDEF TLV format: Type(0x03) + Length + Value + Terminator(0xFE)
+        ndef_tlv = b'\x03' + message_length.to_bytes(1, 'big') + encoded_message + b'\xFE'
+        
+        # Pad to 4-byte boundary for NTAG213 page alignment
+        padding_length = (4 - (len(ndef_tlv) % 4)) % 4
+        complete_message = ndef_tlv + (b'\x00' * padding_length)
+        
         return complete_message
 
     def write_ndef_message(self, connection: CardConnection, ndef_message: bytes) -> bool:
-        """Write NDEF message to tag"""
-        page = 4
-        while ndef_message:
-            block_data = ndef_message[:4]
-            ndef_message = ndef_message[4:]
-            write_command = [0xFF, 0xD6, 0x00, page, 0x04] + list(block_data)
-            response, sw1, sw2 = connection.transmit(write_command)
+        """Write NDEF message to NTAG213 using direct page commands"""
+        try:
+            # Start writing from page 4 (NTAG213 user data area)
+            page = 4
+            max_page = 39  # NTAG213 limit
             
-            if sw1 != 0x90 or sw2 != 0x00:
-                if self.log_callback:
-                    self.log_callback(f"Failed to write to page {page}")
-                return False
-            page += 1
-        return True
+            # Write NDEF message in 4-byte chunks
+            while ndef_message and page <= max_page:
+                # Get next 4 bytes
+                if len(ndef_message) >= 4:
+                    block_data = list(ndef_message[:4])
+                    ndef_message = ndef_message[4:]
+                else:
+                    # Pad last block with zeros
+                    block_data = list(ndef_message) + [0x00] * (4 - len(ndef_message))
+                    ndef_message = b''
+                
+                # Direct NTAG213 write command
+                write_command = [0xFF, 0xD6, 0x00, page, 0x04] + block_data
+                response, sw1, sw2 = connection.transmit(write_command)
+                
+                if sw1 != 0x90 or sw2 != 0x00:
+                    if self.log_callback:
+                        self.log_callback(f"Failed to write to page {page}: SW1={sw1:02X} SW2={sw2:02X}")
+                    return False
+                
+                page += 1
+            
+            return True
+            
+        except Exception as e:
+            if self.log_callback:
+                self.log_callback(f"Write error: {e}")
+            return False
 
     def read_ndef_message(self, connection: CardConnection) -> str:
         """Read NDEF message from tag"""
