@@ -3,7 +3,12 @@
 # NFC CLI ACR1252 Installation Script
 # Installs dependencies and sets up virtual environment
 
-set -e
+set -euo pipefail
+
+# Resolve repository root (one level up from this script)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+cd "${REPO_ROOT}"
 
 echo "🔧 NFC CLI ACR1252 Installation"
 echo "================================"
@@ -35,7 +40,7 @@ else
     VENV_TYPE="venv"
 fi
 
-if [ "$VENV_CREATED" = true ]; then
+if [ "${VENV_CREATED}" = true ]; then
     echo "✅ Virtual environment created successfully"
 else
     echo "❌ Failed to create virtual environment"
@@ -48,7 +53,7 @@ source .venv/bin/activate
 
 # Install dependencies
 echo "📥 Installing Python dependencies..."
-if [ "$VENV_TYPE" = "uv" ]; then
+if [ "${VENV_TYPE}" = "uv" ]; then
     uv pip install -r requirements.txt
 else
     pip install -r requirements.txt
@@ -59,7 +64,7 @@ echo "✅ Installation completed successfully!"
 echo ""
 echo "📋 Next steps:"
 echo "  1. Connect your ACS ACR1252 NFC reader"
-echo "  2. Run: ./run.sh"
+echo "  2. Run: ./scripts/run.sh"
 echo "  3. Or manually: source .venv/bin/activate && python main.py"
 echo ""
 echo "🔧 If you encounter permission issues:"
@@ -67,3 +72,4 @@ echo "  sudo usermod -a -G dialout \$USER"
 echo "  sudo usermod -a -G plugdev \$USER"
 echo "  (then log out and back in)"
 echo ""
+

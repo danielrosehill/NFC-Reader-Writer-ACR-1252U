@@ -195,6 +195,7 @@ class NFCApp(App):
         """Handle input changes for URL preview"""
         if event.input.id == "url-input":
             new_value = event.value
+            self.log_widget.write(f"DEBUG: URL input changed to: '{new_value}'")
             if new_value.strip():
                 # Add https:// if no protocol specified
                 display_url = new_value
@@ -222,6 +223,8 @@ class NFCApp(App):
         self.url_preview.update("")  # Clear URL preview in read mode
         
         self.log_widget.write("📖 Switched to READ mode")
+        self.log_widget.write(f"DEBUG: TUI mode set to: {self.current_mode}")
+        self.log_widget.write(f"DEBUG: NFC handler mode: {self.nfc_handler.mode}")
     
     def action_set_write_mode(self):
         """Switch to write mode"""
@@ -246,6 +249,7 @@ class NFCApp(App):
                 self.url_preview.update(f"📋 URL to write: {display_url}")
         
         self.log_widget.write("✏️ Switched to WRITE mode")
+        self.log_widget.write(f"DEBUG: TUI mode set to: {self.current_mode}")
     
     def action_copy_last_url(self):
         """Copy the last read URL to clipboard"""
@@ -275,6 +279,8 @@ class NFCApp(App):
         """Handle button press events"""
         button_id = event.button.id
         
+        self.log_widget.write(f"DEBUG: Button pressed: {button_id}")
+        
         if button_id == "read-mode-btn":
             self.action_set_read_mode()
         elif button_id == "write-mode-btn":
@@ -284,8 +290,10 @@ class NFCApp(App):
         elif button_id == "quit-btn":
             self.action_quit()
         elif button_id == "write-single":
+            self.log_widget.write("DEBUG: Calling write_single_tag")
             self.write_single_tag()
         elif button_id == "batch-write":
+            self.log_widget.write("DEBUG: Calling write_batch_tags")
             self.write_batch_tags()
         elif button_id == "copy-url-btn":
             self.action_copy_last_url()
@@ -312,6 +320,13 @@ class NFCApp(App):
         # Reset batch counters for single write
         self.nfc_handler.batch_count = 0
         self.nfc_handler.batch_total = 1
+        
+        # Update the mode to write explicitly
+        self.current_mode = "write"
+        
+        # Debug: log current state
+        self.log_widget.write(f"DEBUG: TUI mode set to: {self.current_mode}")
+        self.log_widget.write(f"DEBUG: NFC handler mode: {self.nfc_handler.mode}")
     
     def write_batch_tags(self):
         """Write batch of tags"""
@@ -344,6 +359,10 @@ class NFCApp(App):
         self.nfc_handler.batch_total = batch_count
         self.log_widget.write(f"📝 Present first NFC tag (1/{batch_count})...")
         self.log_widget.write("⚠️  WARNING: Tags will be PERMANENTLY LOCKED (irreversible!)")
+        
+        # Debug: log current state
+        self.log_widget.write(f"DEBUG: TUI mode set to: {self.current_mode}")
+        self.log_widget.write(f"DEBUG: NFC handler mode: {self.nfc_handler.mode}")
 
 
 def main(debug_mode=False):

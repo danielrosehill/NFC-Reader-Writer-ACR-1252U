@@ -26,14 +26,16 @@ git clone https://github.com/yourusername/ACS-ACR-1252-NFC-CLI-Linux.git
 cd ACS-ACR-1252-NFC-CLI-Linux
 ```
 
-2. Install dependencies:
+2. Set up the environment using the wrapper script:
 ```bash
-pip install -r requirements.txt
+./scripts/install.sh
 ```
 
 3. Run the application:
 ```bash
-python main.py
+./scripts/run.sh
+# or manually
+source .venv/bin/activate && python main.py
 ```
 
 ## Usage
@@ -53,7 +55,7 @@ Writing & locking operation:
 Run the application to launch the terminal user interface:
 
 ```bash
-python main.py
+./scripts/run.sh
 ```
 
 **Keyboard Shortcuts:**
@@ -80,7 +82,7 @@ python main.py
 
 The CLI can handle long URLs like:
 ```
-https://homebox.residencejlm.com/item/6183cbf5-6441-4409-9fb1-eef1eb6f4805
+https://example.com/item/6183cbf5-6441-4409-9fb1-eef1eb6f4805
 ```
 
 ## Troubleshooting
@@ -99,16 +101,44 @@ https://homebox.residencejlm.com/item/6183cbf5-6441-4409-9fb1-eef1eb6f4805
 - Try different tag positioning on the reader
 - Check that the tag isn't locked or damaged
 
+## Tested Tags
+
+- NXP NTAG213: ~144 bytes usable NDEF capacity.
+
+Example tag URLs we’ve used in testing often include a UUID path segment from a Homebox inventory system. For documentation, we avoid exposing the real domain and any sensitive identifiers. Typical UUIDs are 36 characters in 8-4-4-4-12 format (for example only):
+```
+/item/6183cbf5-6441-4409-9fb1-eef1eb6f4805
+```
+References to real domains are replaced with a neutral `https://example.com` base.
+
 ## Development
 
 ### Project Structure
 ```
-├── main.py           # CLI entry point
-├── nfc_handler.py    # NFC operations and card monitoring
-├── nfc_tui.py        # Textual TUI interface
-├── requirements.txt  # Python dependencies
-└── README.md         # This file
+├── scripts/           # Bash wrapper scripts (install, run)
+├── tools/             # Helper Python tools (e.g., write_url)
+├── main.py            # CLI/TUI entry point
+├── nfc_cli.py         # CLI commands
+├── nfc_tui.py         # Textual TUI interface
+├── nfc_gui.py         # (Optional) GUI prototype
+├── nfc_handler.py     # NFC operations and card monitoring
+├── requirements.txt   # Python dependencies
+└── README.md          # This file
 ```
+
+## Reproducible Example
+
+To produce a sanitized, commit‑friendly example of a full write flow without exposing private URLs:
+
+- Write `https://example.com` to a tag and capture logs:
+```
+python tools/write_url.py
+# options: --url <custom-url> --lock --timeout 60
+```
+
+This creates two files:
+- `debug/ndef_write_<timestamp>.log` (verbose runtime log; ignored by git)
+- `examples/ndef_write_example_<timestamp>.txt` (sanitized log suitable for the repo)
 
 ### Dependencies
 - `pyscard`: PC/SC smartcard library interface

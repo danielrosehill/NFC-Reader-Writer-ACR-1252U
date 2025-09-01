@@ -1,0 +1,14 @@
+2025-09-02T01:08:41 | === NFC Read Example (NTAG213) ===
+2025-09-02T01:08:41 | Hint: Present the tag written with tools/write_url.py
+2025-09-02T01:08:41 | Set read mode
+2025-09-02T01:08:41 | Started monitoring with reader: ACS ACR1252 Dual Reader [ACR1252 Dual Reader PICC] 00 00
+2025-09-02T01:08:41 | Monitoring started on reader: ACS ACR1252 Dual Reader [ACR1252 Dual Reader PICC] 00 00
+2025-09-02T01:08:41 | Please present the tag now...
+2025-09-02T01:08:43 | Card detected, current mode: read
+2025-09-02T01:08:43 | URL to write: None
+2025-09-02T01:08:43 | Lock tags: False
+2025-09-02T01:08:43 | Reading NFC tag...
+2025-09-02T01:08:43 | DEBUG: Calling read_callback for: https://example.com
+2025-09-02T01:08:43 | READ URL: https://example.com
+2025-09-02T01:08:43 | Stopped NFC monitoring
+2025-09-02T01:08:43 | === Read session finished ===

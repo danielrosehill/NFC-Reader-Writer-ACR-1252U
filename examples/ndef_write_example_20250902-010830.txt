@@ -1,0 +1,39 @@
+2025-09-02T01:08:30 | === NFC Write Example (NTAG213) ===
+2025-09-02T01:08:30 | URL: https://example.com
+2025-09-02T01:08:30 | Lock after write: False
+2025-09-02T01:08:30 | Hint: Present a blank or rewritable NTAG213 tag to the reader
+2025-09-02T01:08:30 | Created NDEF record for URL: https://example.com
+2025-09-02T01:08:30 | Message length: 16, Total bytes: 20
+2025-09-02T01:08:30 | Message content (hex): 0310d1010c55046578616d706c652e636f6dfe00
+2025-09-02T01:08:30 | Prepared NDEF TLV bytes: 20 bytes
+2025-09-02T01:08:30 | TLV (hex, first 64): 0310d1010c55046578616d706c652e636f6dfe00
+2025-09-02T01:08:30 | Set write mode: URL=https://example.com, lock=False
+2025-09-02T01:08:30 | Started monitoring with reader: ACS ACR1252 Dual Reader [ACR1252 Dual Reader PICC] 00 00
+2025-09-02T01:08:30 | Monitoring started on reader: ACS ACR1252 Dual Reader [ACR1252 Dual Reader PICC] 00 00
+2025-09-02T01:08:30 | Please present the tag now...
+2025-09-02T01:08:34 | Card detected, current mode: write
+2025-09-02T01:08:34 | URL to write: https://example.com
+2025-09-02T01:08:34 | Lock tags: False
+2025-09-02T01:08:34 | handle_write_mode called with URL: https://example.com
+2025-09-02T01:08:34 | Writing URL: https://example.com
+2025-09-02T01:08:34 | Created NDEF record for URL: https://example.com
+2025-09-02T01:08:34 | Message length: 16, Total bytes: 20
+2025-09-02T01:08:34 | Message content (hex): 0310d1010c55046578616d706c652e636f6dfe00
+2025-09-02T01:08:34 | Created NDEF message, length: 20 bytes
+2025-09-02T01:08:34 | Starting write operation, message length: 20 bytes
+2025-09-02T01:08:34 | Writing to page 4: [3, 0, 0, 0]
+2025-09-02T01:08:34 | Successfully wrote to page 4
+2025-09-02T01:08:34 | Writing to page 5: [12, 85, 4, 101]
+2025-09-02T01:08:34 | Successfully wrote to page 5
+2025-09-02T01:08:34 | Writing to page 6: [120, 97, 109, 112]
+2025-09-02T01:08:34 | Successfully wrote to page 6
+2025-09-02T01:08:34 | Writing to page 7: [108, 101, 46, 99]
+2025-09-02T01:08:34 | Successfully wrote to page 7
+2025-09-02T01:08:34 | Writing to page 8: [111, 109, 254, 0]
+2025-09-02T01:08:34 | Successfully wrote to page 8
+2025-09-02T01:08:34 | Writing to page 4: [3, 16, 209, 1]
+2025-09-02T01:08:34 | Successfully wrote to page 4
+2025-09-02T01:08:34 | Write operation completed successfully
+2025-09-02T01:08:34 | WRITE: URL written successfully
+2025-09-02T01:08:34 | Stopped NFC monitoring
+2025-09-02T01:08:34 | === Write session finished ===

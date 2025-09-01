@@ -1,0 +1,15 @@
+2025-09-02T01:06:44 | === NFC Write Example (NTAG213) ===
+2025-09-02T01:06:44 | URL: https://example.com
+2025-09-02T01:06:44 | Lock after write: False
+2025-09-02T01:06:44 | Hint: Present a blank or rewritable NTAG213 tag to the reader
+2025-09-02T01:06:44 | Created NDEF record for URL: https://example.com
+2025-09-02T01:06:44 | Message length: 16, Total bytes: 20
+2025-09-02T01:06:44 | Message content (hex): 0310d1010c55046578616d706c652e636f6dfe00
+2025-09-02T01:06:44 | Prepared NDEF TLV bytes: 20 bytes
+2025-09-02T01:06:44 | TLV (hex, first 64): 0310d1010c55046578616d706c652e636f6dfe00
+2025-09-02T01:06:44 | Set write mode: URL=https://example.com, lock=False
+2025-09-02T01:06:44 | Started monitoring with reader: ACS ACR1252 Dual Reader [ACR1252 Dual Reader PICC] 00 00
+2025-09-02T01:06:44 | Monitoring started on reader: ACS ACR1252 Dual Reader [ACR1252 Dual Reader PICC] 00 00
+2025-09-02T01:06:44 | Please present the tag now...
+2025-09-02T01:07:44 | TIMEOUT: No tag detected within timeout window
+2025-09-02T01:07:44 | Stopped NFC monitoring

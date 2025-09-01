@@ -57,7 +57,7 @@ class NFCHandler:
             return False
             
     def create_ndef_record(self, url: str) -> bytes:
-        """Create NDEF record from URL using direct NTAG213 approach"""
+        """Create NDEF record (TLV-wrapped) for NTAG21x pages"""
         # Create NDEF URI record manually for ACR1252 compatibility
         uri_record = ndef.UriRecord(url)
         encoded_message = b''.join(ndef.message_encoder([uri_record]))
@@ -70,42 +70,132 @@ class NFCHandler:
         padding_length = (4 - (len(ndef_tlv) % 4)) % 4
         complete_message = ndef_tlv + (b'\x00' * padding_length)
         
+        if self.log_callback:
+            self.log_callback(f"Created NDEF record for URL: {url}")
+            self.log_callback(f"Message length: {message_length}, Total bytes: {len(complete_message)}")
+            self.log_callback(f"Message content (hex): {complete_message.hex()}")
+        
         return complete_message
 
-    def write_ndef_message(self, connection: CardConnection, ndef_message: bytes) -> bool:
-        """Write NDEF message to NTAG213 using direct page commands"""
+    def _ensure_debug_dir(self):
+        """Ensure debug directory exists for logs."""
         try:
-            # Start writing from page 4 (NTAG213 user data area)
-            page = 4
-            max_page = 39  # NTAG213 limit
-            
-            # Write NDEF message in 4-byte chunks
-            while ndef_message and page <= max_page:
-                # Get next 4 bytes
-                if len(ndef_message) >= 4:
-                    block_data = list(ndef_message[:4])
-                    ndef_message = ndef_message[4:]
-                else:
-                    # Pad last block with zeros
-                    block_data = list(ndef_message) + [0x00] * (4 - len(ndef_message))
-                    ndef_message = b''
-                
-                # Direct NTAG213 write command
-                write_command = [0xFF, 0xD6, 0x00, page, 0x04] + block_data
-                response, sw1, sw2 = connection.transmit(write_command)
-                
-                if sw1 != 0x90 or sw2 != 0x00:
-                    if self.log_callback:
-                        self.log_callback(f"Failed to write to page {page}: SW1={sw1:02X} SW2={sw2:02X}")
+            import os
+            os.makedirs("debug", exist_ok=True)
+        except Exception:
+            pass
+
+    def _pcsc_write_page(self, connection: CardConnection, page: int, data4: bytes, retries: int = 2) -> bool:
+        """Write exactly 4 bytes to a page with small retry on SW1=0x63 (NACK)."""
+        block_data = list(data4)
+        apdu = [0xFF, 0xD6, 0x00, page, 0x04] + block_data
+        attempts = 0
+        while True:
+            if self.log_callback:
+                self.log_callback(f"Writing to page {page}: {block_data}")
+            response, sw1, sw2 = connection.transmit(apdu)
+            if sw1 == 0x90 and sw2 == 0x00:
+                if self.log_callback:
+                    self.log_callback(f"Successfully wrote to page {page}")
+                return True
+            # Retry transient NACKs a couple times
+            if sw1 == 0x63 and attempts < retries:
+                attempts += 1
+                time.sleep(0.05)
+                continue
+            error_msg = f"Write failed at page {page}: SW1={sw1:02X} SW2={sw2:02X}"
+            if self.log_callback:
+                self.log_callback(error_msg)
+            try:
+                self._ensure_debug_dir()
+                with open("debug/write_errors.log", "a") as f:
+                    import datetime
+                    ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    f.write(f"[{ts}] Write Error: {error_msg}\n")
+                    f.write(f"[{ts}] APDU: {apdu}\n---\n")
+            except Exception:
+                pass
+            return False
+
+    def _pcsc_read_page(self, connection: CardConnection, page: int) -> Optional[bytes]:
+        """Read exactly 4 bytes from a page."""
+        read_command = [0xFF, 0xB0, 0x00, page, 0x04]
+        response, sw1, sw2 = connection.transmit(read_command)
+        if sw1 == 0x90 and sw2 == 0x00:
+            return bytes(response)
+        return None
+
+    def _format_cc_if_needed(self, connection: CardConnection) -> bool:
+        """Ensure Capability Container (CC) bytes are present on page 3 for NTAG213.
+        CC format for NTAG213: E1 10 12 00 (NDEF mapping v1.0, 0x12=144 bytes/8)
+        """
+        try:
+            cc = self._pcsc_read_page(connection, 3)
+            if cc and len(cc) == 4 and cc[0] == 0xE1 and cc[1] == 0x10:
+                return True
+            desired = bytes([0xE1, 0x10, 0x12, 0x00])
+            if self.log_callback:
+                self.log_callback(f"CC not set or unknown ({cc}); writing CC bytes: {list(desired)}")
+            return self._pcsc_write_page(connection, 3, desired)
+        except Exception as e:
+            if self.log_callback:
+                self.log_callback(f"Failed to verify/write CC: {e}")
+            return False
+
+    def write_ndef_message(self, connection: CardConnection, ndef_message: bytes) -> bool:
+        """Write NDEF message to NTAG213 with safe NLEN update and basic retries."""
+        try:
+            if self.log_callback:
+                self.log_callback(f"Starting write operation, message length: {len(ndef_message)} bytes")
+            # Ensure CC bytes exist for NDEF (best effort)
+            self._format_cc_if_needed(connection)
+
+            # Two-phase write:
+            # 1) Temporarily set NLEN=0 on page 4 to avoid inconsistent reads
+            # 2) Write remaining TLV bytes from page 5 onward
+            # 3) Rewrite page 4 with the real NLEN and first two payload bytes
+
+            if len(ndef_message) < 4:
+                # Shouldn't happen (TLV header itself is 2+ bytes), but guard anyway
+                padded = ndef_message + b"\x00" * (4 - len(ndef_message))
+                if not self._pcsc_write_page(connection, 4, padded[:4]):
                     return False
-                
+                if self.log_callback:
+                    self.log_callback("Write operation completed successfully")
+                return True
+
+            original_p4 = bytes(ndef_message[0:4])
+            zero_p4 = bytes([0x03, 0x00, 0x00, 0x00])
+            if not self._pcsc_write_page(connection, 4, zero_p4):
+                return False
+            time.sleep(0.02)
+
+            # Write the rest starting from page 5
+            remaining = ndef_message[4:]
+            page = 5
+            while remaining and page <= 39:
+                chunk = remaining[:4]
+                if len(chunk) < 4:
+                    chunk = chunk + b"\x00" * (4 - len(chunk))
+                if not self._pcsc_write_page(connection, page, chunk):
+                    return False
+                remaining = remaining[4:]
                 page += 1
-            
+                time.sleep(0.01)
+
+            # Restore real TLV header with actual NLEN
+            if not self._pcsc_write_page(connection, 4, original_p4):
+                return False
+
+            if self.log_callback:
+                self.log_callback("Write operation completed successfully")
             return True
             
         except Exception as e:
             if self.log_callback:
-                self.log_callback(f"Write error: {e}")
+                self.log_callback(f"Write operation error: {e}")
+                import traceback
+                self.log_callback(f"Traceback: {traceback.format_exc()}")
             return False
 
     def read_ndef_message(self, connection: CardConnection) -> str:
@@ -152,26 +242,53 @@ class NFCHandler:
     def lock_tag_permanently(self, connection: CardConnection) -> bool:
         """Permanently lock NTAG213 tag by setting lock bits"""
         try:
+            if self.log_callback:
+                self.log_callback("Attempting to permanently lock tag...")
+                
             # Read current lock status
             read_command = [0xFF, 0xB0, 0x00, 0x02, 0x04]
             response, sw1, sw2 = connection.transmit(read_command)
             
+            if self.log_callback:
+                self.log_callback(f"Read lock status - SW1: {sw1:02X}, SW2: {sw2:02X}, Response: {response}")
+            
             if sw1 != 0x90 or sw2 != 0x00:
+                if self.log_callback:
+                    self.log_callback(f"Failed to read lock status: SW1={sw1:02X} SW2={sw2:02X}")
                 return False
                 
             current_lock = list(response)
+            
+            if self.log_callback:
+                self.log_callback(f"Current lock bytes: {current_lock}")
             
             # Set lock bits - permanently lock pages 3-15
             current_lock[2] = 0xFF  # Lock pages 3-10
             current_lock[3] = 0xFF  # Lock pages 11-15 and lock bytes
             
+            if self.log_callback:
+                self.log_callback(f"Setting lock bytes to: {current_lock}")
+            
             # Write lock bytes - WARNING: IRREVERSIBLE!
             write_command = [0xFF, 0xD6, 0x00, 0x02, 0x04] + current_lock
             response, sw1, sw2 = connection.transmit(write_command)
             
-            return sw1 == 0x90 and sw2 == 0x00
+            if self.log_callback:
+                self.log_callback(f"Lock write result - SW1: {sw1:02X}, SW2: {sw2:02X}")
+            
+            success = sw1 == 0x90 and sw2 == 0x00
+            if success:
+                self.log_callback("Tag locked successfully")
+            else:
+                self.log_callback(f"Failed to lock tag: SW1={sw1:02X} SW2={sw2:02X}")
                 
-        except Exception:
+            return success
+                
+        except Exception as e:
+            if self.log_callback:
+                self.log_callback(f"Lock operation error: {e}")
+                import traceback
+                self.log_callback(f"Traceback: {traceback.format_exc()}")
             return False
     
     def start_monitoring(self, read_callback: Callable = None, write_callback: Callable = None, log_callback: Callable = None):
@@ -216,12 +333,16 @@ class NFCHandler:
         self.mode = "write"
         self.url_to_write = url
         self.lock_tags = lock_after_write
-        
+        if self.log_callback:
+            self.log_callback(f"Set write mode: URL={url}, lock={lock_after_write}")
+    
     def set_read_mode(self):
         """Set read mode"""
         self.mode = "read"
         self.url_to_write = None
         self.lock_tags = False
+        if self.log_callback:
+            self.log_callback("Set read mode")
 
 
 class NFCObserver(CardObserver):
@@ -236,16 +357,28 @@ class NFCObserver(CardObserver):
                 connection = card.createConnection()
                 connection.connect()
                 
+                # Debug: log current mode
+                if self.nfc_handler.log_callback:
+                    self.nfc_handler.log_callback(f"Card detected, current mode: {self.nfc_handler.mode}")
+                    self.nfc_handler.log_callback(f"URL to write: {self.nfc_handler.url_to_write}")
+                    self.nfc_handler.log_callback(f"Lock tags: {self.nfc_handler.lock_tags}")
+                
                 if self.nfc_handler.mode == "read":
                     self.handle_read_mode(connection)
                 elif self.nfc_handler.mode == "write":
                     self.handle_write_mode(connection)
+                    # Don't trigger read operations in write mode
+                else:
+                    if self.nfc_handler.log_callback:
+                        self.nfc_handler.log_callback(f"Unknown mode: {self.nfc_handler.mode}")
                     
                 connection.disconnect()
                 
             except Exception as e:
                 if self.nfc_handler.log_callback:
                     self.nfc_handler.log_callback(f"Error: {e}")
+                    import traceback
+                    self.nfc_handler.log_callback(f"Traceback: {traceback.format_exc()}")
         
         for card in removedcards:
             if self.nfc_handler.log_callback:
@@ -267,16 +400,18 @@ class NFCObserver(CardObserver):
         url = self.nfc_handler.read_ndef_message(connection)
         
         if url:
-            # Update last read time to start cooldown
+            # Update last read time to start cooldown BEFORE callback
             self.nfc_handler.last_read_time = current_time
+            
+            if self.nfc_handler.log_callback:
+                self.nfc_handler.log_callback(f"DEBUG: Calling read_callback for: {url}")
             
             if self.nfc_handler.read_callback:
                 self.nfc_handler.read_callback(url)
             
-            # Copy to clipboard and open browser
+            # Copy to clipboard only (no browser opening in write mode)
             try:
                 pyperclip.copy(url)
-                webbrowser.open(url)
             except:
                 pass
         else:
@@ -285,28 +420,68 @@ class NFCObserver(CardObserver):
     
     def handle_write_mode(self, connection):
         """Handle writing to NFC tag"""
+        if self.nfc_handler.log_callback:
+            self.nfc_handler.log_callback(f"handle_write_mode called with URL: {self.nfc_handler.url_to_write}")
+            
         if not self.nfc_handler.url_to_write:
+            if self.nfc_handler.log_callback:
+                self.nfc_handler.log_callback("No URL to write")
             return
             
         if self.nfc_handler.log_callback:
             self.nfc_handler.log_callback(f"Writing URL: {self.nfc_handler.url_to_write}")
         
-        # Write NDEF message
-        ndef_message = self.nfc_handler.create_ndef_record(self.nfc_handler.url_to_write)
-        if self.nfc_handler.write_ndef_message(connection, ndef_message):
-            success_msg = "URL written successfully"
-            
-            # Lock tag if requested
-            if self.nfc_handler.lock_tags:
-                if self.nfc_handler.lock_tag_permanently(connection):
-                    success_msg += " and locked permanently"
-                else:
-                    success_msg += " (lock failed)"
-            
-            if self.nfc_handler.write_callback:
-                self.nfc_handler.write_callback(success_msg)
-                
-            self.nfc_handler.cards_processed += 1
-        else:
+        try:
+            # Write NDEF message
+            ndef_message = self.nfc_handler.create_ndef_record(self.nfc_handler.url_to_write)
             if self.nfc_handler.log_callback:
-                self.nfc_handler.log_callback("Failed to write URL")
+                self.nfc_handler.log_callback(f"Created NDEF message, length: {len(ndef_message)} bytes")
+                
+            if self.nfc_handler.write_ndef_message(connection, ndef_message):
+                success_msg = "URL written successfully"
+                
+                # Lock tag if requested
+                if self.nfc_handler.lock_tags:
+                    if self.nfc_handler.log_callback:
+                        self.nfc_handler.log_callback("Attempting to lock tag...")
+                    if self.nfc_handler.lock_tag_permanently(connection):
+                        success_msg += " and locked permanently"
+                    else:
+                        success_msg += " (lock failed)"
+                
+                if self.nfc_handler.write_callback:
+                    self.nfc_handler.write_callback(success_msg)
+                    
+                self.nfc_handler.cards_processed += 1
+                
+                # Handle batch writing
+                if self.nfc_handler.batch_total > 1:
+                    self.nfc_handler.batch_count += 1
+                    if self.nfc_handler.batch_count < self.nfc_handler.batch_total:
+                        if self.nfc_handler.log_callback:
+                            self.nfc_handler.log_callback(f"📝 Present next NFC tag ({self.nfc_handler.batch_count + 1}/{self.nfc_handler.batch_total})...")
+                    else:
+                        if self.nfc_handler.log_callback:
+                            self.nfc_handler.log_callback("✅ Batch writing completed")
+            else:
+                if self.nfc_handler.log_callback:
+                    self.nfc_handler.log_callback("Failed to write URL")
+                    
+        except Exception as e:
+            error_msg = f"Write operation failed: {str(e)}"
+            if self.nfc_handler.log_callback:
+                self.nfc_handler.log_callback(f"Write error: {str(e)}")
+            print(f"ERROR: {error_msg}")  # Also print to console
+            
+            # Log to file for debugging
+            try:
+                self.nfc_handler._ensure_debug_dir()
+                with open("debug/write_errors.log", "a") as f:
+                    import datetime
+                    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    f.write(f"[{timestamp}] {error_msg}\n")
+                    f.write(f"[{timestamp}] URL: {self.nfc_handler.url_to_write}\n")
+                    f.write(f"[{timestamp}] Exception type: {type(e).__name__}\n")
+                    f.write("---\n")
+            except:
+                pass

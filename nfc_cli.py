@@ -7,7 +7,7 @@ Better URL input handling with clipboard support
 import sys
 import threading
 import time
-import webbrowser
+import subprocess
 import pyperclip
 from nfc_handler import NFCHandler
 
@@ -53,8 +53,12 @@ class NFCCli:
         try:
             pyperclip.copy(url)
             self.log_message(f"📋 URL copied to clipboard")
-            webbrowser.open(url)
-            self.log_message(f"🌐 Opened in browser")
+            self.log_message(f"🌐 Opening browser for: {url}")
+            
+            # Use subprocess to open browser directly to avoid multiple tabs
+            subprocess.run(['xdg-open', url], check=False, capture_output=True)
+            
+            self.log_message(f"🌐 Browser opened")
         except Exception as e:
             self.log_message(f"❌ Error: {e}")
         
@@ -132,12 +136,13 @@ class NFCCli:
         # Show URL clearly for verification
         print(f"\n📋 URL to write: {url}")
         print("="*len(url) + "="*20)
-        print("⚠️  WARNING: Tags will be PERMANENTLY LOCKED after writing (irreversible!)")
         
-        confirm = input("Write and permanently lock this URL to NFC tag? (y/n): ").strip().lower()
+        confirm = input("Write this URL to NFC tag? (y/n): ").strip().lower()
         if confirm not in ['y', 'yes']:
             print("❌ Write cancelled")
             return
+
+        lock_after = input("Permanently lock tag after write? (y/N): ").strip().lower() in ['y','yes']
         
         # Ask about batch writing
         batch_input = input("Batch count (press Enter for single tag): ").strip()
@@ -151,8 +156,8 @@ class NFCCli:
         if batch_count > 1:
             print(f"📦 Batch write: {batch_count} tags")
         
-        # Set write mode and start writing with permanent locking
-        self.nfc_handler.set_write_mode(url, lock_after_write=True)
+        # Set write mode and start writing (optional locking)
+        self.nfc_handler.set_write_mode(url, lock_after_write=lock_after)
         self.nfc_handler.batch_count = 0
         self.nfc_handler.batch_total = batch_count
         
